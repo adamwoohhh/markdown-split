@@ -12,6 +12,7 @@
     "build:bin": "bun build index.ts --compile --outfile bin/markdown-split --target bun-darwin-x64",
     "build:bin:arm64": "bun build index.ts --compile --outfile bin/markdown-split-arm64 --target bun-darwin-arm64",
     "build:bin:linux": "bun build index.ts --compile --outfile bin/markdown-split-linux --target bun-linux-x64",
+    "test": "bun test",
     "typecheck": "tsc --noEmit"
   },
   "private": true,

@@ -70,10 +70,10 @@ function interpolate(template: string, chunk: Chunk, options: CliOptions): strin
 export function slugify(text: string): string {
   return text
     .toLowerCase()
-    .replace(/[^\w\s-]/g, "")    // remove non-word chars (except hyphens)
-    .replace(/[\s_]+/g, "-")     // spaces/underscores → hyphens
-    .replace(/-+/g, "-")         // collapse multiple hyphens
-    .replace(/^-+|-+$/g, "")     // trim leading/trailing hyphens
+    .replace(/[^\p{L}\p{N}\s-]/gu, "")  // keep Unicode letters/digits/spaces/hyphens
+    .replace(/[\s_]+/g, "-")             // spaces/underscores → hyphens
+    .replace(/-+/g, "-")                 // collapse multiple hyphens
+    .replace(/^-+|-+$/g, "")            // trim leading/trailing hyphens
     || "untitled"
 }
 
