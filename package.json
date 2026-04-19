@@ -1,7 +1,19 @@
 {
-  "name": "mardown_split",
+  "name": "markdown-split",
+  "version": "0.1.0",
   "module": "index.ts",
   "type": "module",
+  "bin": {
+    "markdown-split": "./bin/markdown-split.js"
+  },
+  "scripts": {
+    "start": "bun run index.ts",
+    "build": "bun build index.ts --outfile dist/markdown-split.js --target node --minify",
+    "build:bin": "bun build index.ts --compile --outfile bin/markdown-split --target bun-darwin-x64",
+    "build:bin:arm64": "bun build index.ts --compile --outfile bin/markdown-split-arm64 --target bun-darwin-arm64",
+    "build:bin:linux": "bun build index.ts --compile --outfile bin/markdown-split-linux --target bun-linux-x64",
+    "typecheck": "tsc --noEmit"
+  },
   "private": true,
   "devDependencies": {
     "@types/bun": "latest"

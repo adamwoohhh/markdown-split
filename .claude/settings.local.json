@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(bun run:*)"
+      "Bash(bun run:*)",
+      "Bash(chmod +x /Users/adamwu/CodeForFun/markit/mardown_split/bin/mardown-split.js)"
     ]
   }
 }

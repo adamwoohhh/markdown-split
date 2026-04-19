@@ -5,17 +5,18 @@ import { compileRules } from "./rules.ts"
 import { parse } from "./parser.ts"
 import { assignFilenames } from "./namer.ts"
 import { writeChunks, ensureDir } from "./writer.ts"
+import { argv, readText } from "./compat.ts"
 
 const HELP = `
-Usage: bun run index.ts [options]
+Usage: markdown-split [options]
 
 Options:
   -i, --input <file>        Input .md file (required)
-  -o, --output-dir <dir>    Output directory (default: ".")
+  -o, --output-dir <dir>    Output directory, relative to cwd (default: ".")
   -f, --format <fmt>        Output format: md | json-array | json-files (default: md)
   -c, --config <file>       Config file path (.json, .ts, .js, .mjs)
   -r, --rule <json>         Inline rule as JSON string (repeatable)
-      --prefix <str>        Filename prefix (default: "chunk")
+      --prefix <str>        Filename prefix for index strategy (default: "chunk")
       --index-pad <n>       Zero-padding width for index numbers (default: 3)
       --dry-run             Print output paths without writing files
       --overwrite           Allow overwriting existing output files
@@ -23,16 +24,85 @@ Options:
   -v, --verbose             Print per-chunk details
   -h, --help                Show this help message
 
-Examples:
-  # Split on H2 headings, output as MD files with heading-based filenames
-  bun run index.ts -i big.md -o parts/ \\
+────────────────────────────────────────────────────────────────
+Rule Fields
+────────────────────────────────────────────────────────────────
+Each rule is a JSON object (via -r) or an entry in the config file's "rules" array.
+
+  type              "regex" (default, may be omitted) | "function"
+                    Determines whether the rule matches by regex or a JS function.
+                    "function" rules are only supported in .ts/.js config files.
+
+  id                Optional string label. Used in warning/error messages.
+
+  pattern           [regex only] Regular expression string to match against each line.
+                    Example: "^## " matches any line starting with "## ".
+
+  flags             [regex only] Regex flags string (default: "").
+                    Example: "i" for case-insensitive matching.
+                    Note: the "g" flag is automatically stripped (breaks line matching).
+
+  fn                [function only] A JS function (line, lineIndex, allLines) => result | null
+                    Return { splitBehavior, metadata?, filename? } to split, or null/false to skip.
+                    Example: split when three consecutive blank lines are found.
+
+  splitBehavior     What to do when the rule matches a line (default: "before"):
+                      "before"  — the matched line becomes the first line of the NEW chunk
+                      "after"   — the matched line is the last line of the CURRENT chunk, then split
+                      "exclude" — the matched line is dropped; the split happens here
+
+  filenameStrategy  How to name the output file for each chunk (default: "index"):
+                      "index"    — sequential number: chunk-001, chunk-002, ...
+                      "heading"  — slugified text of the first heading (# / ## / ...) in the chunk
+                      "match"    — slugified text of the line that triggered the split
+                      "template" — custom template string (see filenameTemplate below)
+
+  filenameTemplate  [strategy: "template" only] Template string with placeholders:
+                      {index}   — zero-padded chunk index
+                      {slug}    — slugified first heading of the chunk
+                      {title}   — same as slug (or from metadata.title if set)
+                      {<key>}   — any key from chunk metadata
+                    Example: "chapter-{index}-{title}"
+
+  priority          Integer (default: 0). When multiple rules match the same line,
+                    the rule with the highest priority wins. Ties go to the first-defined rule.
+
+  metadataExtract   [regex only] Map from named capture group → metadata key.
+                    Allows extracting data from the matched line into chunk metadata.
+                    Example: pattern "^# (?<title>.+)", metadataExtract: { "title": "title" }
+                    → chunk.metadata.title = the captured heading text
+
+────────────────────────────────────────────────────────────────
+Output Formats (-f / --format)
+────────────────────────────────────────────────────────────────
+  md           One .md file per chunk. Content is verbatim from the source.
+  json-files   One .json file per chunk: { index, filename, metadata, content }
+  json-array   Single .json file (named after input): array of all chunk objects
+
+────────────────────────────────────────────────────────────────
+Examples
+────────────────────────────────────────────────────────────────
+  # Split on H2 headings; name files after the heading text
+  markdown-split -i book.md -o parts/ \\
     -r '{"pattern":"^## ","splitBehavior":"before","filenameStrategy":"heading"}'
 
-  # Use a config file, output as a single JSON array
-  bun run index.ts -i big.md -f json-array -c split.config.ts
+  # Split after every H1; name files with a custom template
+  markdown-split -i book.md -o out/ \\
+    -r '{"pattern":"^# ","splitBehavior":"after","filenameStrategy":"template","filenameTemplate":"ch-{index}-{slug}"}'
 
-  # Preview filenames without writing
-  bun run index.ts -i big.md -c config.json --dry-run
+  # Extract title from heading via named capture group into metadata
+  markdown-split -i book.md -o out/ -f json-array \\
+    -r '{"pattern":"^# (?<title>.+)","metadataExtract":{"title":"title"},"filenameStrategy":"template","filenameTemplate":"{title}"}'
+
+  # Split on horizontal rules (---), drop the separator line
+  markdown-split -i notes.md -o parts/ \\
+    -r '{"pattern":"^---\\\\s*$","splitBehavior":"exclude"}'
+
+  # Use a .ts config file with function rules; output as JSON array; dry-run preview
+  markdown-split -i big.md -f json-array -c split.config.ts --dry-run
+
+  # Use a JSON config file and allow overwriting existing output
+  markdown-split -i big.md -c config.json --overwrite
 `
 
 export async function run(argv: string[]): Promise<void> {
@@ -166,7 +236,7 @@ export async function run(argv: string[]): Promise<void> {
   const inputPath = resolve(options.input)
   let content: string
   try {
-    content = await Bun.file(inputPath).text()
+    content = await readText(inputPath)
   } catch {
     fatal(`Cannot read input file: ${inputPath}`)
   }

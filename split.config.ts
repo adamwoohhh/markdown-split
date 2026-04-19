@@ -4,7 +4,7 @@ export default {
   rules: [
     {
       id: "h2-regex",
-      pattern: "^## ",
+      pattern: "^第.+回",
       splitBehavior: "before",
       filenameStrategy: "heading",
       priority: 5,

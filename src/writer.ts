@@ -1,5 +1,7 @@
 import { join, basename } from "node:path"
+import { existsSync, mkdirSync } from "node:fs"
 import type { Chunk, JsonChunk, CliOptions } from "./types.ts"
+import { writeContent } from "./compat.ts"
 
 export async function writeChunks(
   chunks: Chunk[],
@@ -26,9 +28,8 @@ async function writeMdFiles(
   const paths = chunks.map((c) => join(outputDir, `${c.filename!}.md`))
   checkConflicts(paths, overwrite)
 
-  for (let i = 0; i < chunks.length; i++) {
-    const chunk = chunks[i]
-    const outPath = paths[i]
+  for (const [i, chunk] of chunks.entries()) {
+    const outPath = paths[i] ?? join(outputDir, `${chunk.filename!}.md`)
     const content = chunk.lines.join("\n") + "\n"
 
     if (dryRun) {
@@ -36,7 +37,7 @@ async function writeMdFiles(
       console.log(chunk.lines.slice(0, 3).map((l) => `  ${l}`).join("\n"))
       if (chunk.lines.length > 3) console.log(`  ... (${chunk.lines.length} lines total)`)
     } else {
-      await Bun.write(outPath, content)
+      await writeContent(outPath, content)
     }
   }
 }
@@ -50,9 +51,8 @@ async function writeJsonFiles(
   const paths = chunks.map((c) => join(outputDir, `${c.filename!}.json`))
   checkConflicts(paths, overwrite)
 
-  for (let i = 0; i < chunks.length; i++) {
-    const chunk = chunks[i]
-    const outPath = paths[i]
+  for (const [i, chunk] of chunks.entries()) {
+    const outPath = paths[i] ?? join(outputDir, `${chunk.filename!}.json`)
     const jsonChunk: JsonChunk = {
       index: chunk.index,
       filename: chunk.filename!,
@@ -63,7 +63,7 @@ async function writeJsonFiles(
     if (dryRun) {
       console.log(`[dry-run] ${outPath}`)
     } else {
-      await Bun.write(outPath, JSON.stringify(jsonChunk, null, 2))
+      await writeContent(outPath, JSON.stringify(jsonChunk, null, 2))
     }
   }
 }
@@ -89,14 +89,13 @@ async function writeJsonArray(
   if (dryRun) {
     console.log(`[dry-run] ${outPath} (${chunks.length} chunks)`)
   } else {
-    await Bun.write(outPath, JSON.stringify(jsonChunks, null, 2))
+    await writeContent(outPath, JSON.stringify(jsonChunks, null, 2))
   }
 }
 
 function checkConflicts(paths: string[], overwrite: boolean): void {
   if (overwrite) return
 
-  const { existsSync } = require("node:fs") as typeof import("node:fs")
   const existing = paths.filter((p) => existsSync(p))
 
   if (existing.length > 0) {
@@ -107,6 +106,5 @@ function checkConflicts(paths: string[], overwrite: boolean): void {
 }
 
 export async function ensureDir(dir: string): Promise<void> {
-  const { mkdirSync } = require("node:fs") as typeof import("node:fs")
   mkdirSync(dir, { recursive: true })
 }

@@ -1,11 +1,12 @@
 import { resolve } from "node:path"
 import type { ConfigFile, AnyRule, CliOptions, OutputConfig } from "./types.ts"
+import { readText } from "./compat.ts"
 
 export async function loadConfigFile(configPath: string): Promise<ConfigFile> {
   const absPath = resolve(configPath)
 
   if (configPath.endsWith(".json")) {
-    const text = await Bun.file(absPath).text()
+    const text = await readText(absPath)
     try {
       return JSON.parse(text) as ConfigFile
     } catch (e) {

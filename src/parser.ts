@@ -29,7 +29,7 @@ export function parse(
   }
 
   for (let i = 0; i < allLines.length; i++) {
-    const line = allLines[i]
+    const line = allLines[i] ?? ""
 
     if (rules.length === 0) {
       current.lines.push(line)

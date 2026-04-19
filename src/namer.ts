@@ -50,7 +50,7 @@ function indexName(index: number, options: CliOptions): string {
 function extractHeading(lines: string[]): string | null {
   for (const line of lines) {
     const m = line.match(/^#{1,6}\s+(.+)/)
-    if (m) return m[1].trim()
+    if (m) return (m[1] ?? "").trim() || null
   }
   return null
 }
