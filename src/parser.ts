@@ -23,7 +23,8 @@ export function parse(
   let current: Chunk = newChunk(1)
 
   function sealCurrent() {
-    if (keepEmpty || current.lines.length > 0) {
+    const hasContent = current.lines.some((l) => l !== "")
+    if (keepEmpty || hasContent) {
       chunks.push(current)
     }
   }

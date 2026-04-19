@@ -250,7 +250,7 @@ export async function run(argv: string[]): Promise<void> {
     return
   }
 
-  if (options.rules.length > 0 && chunks.length === 1) {
+  if (options.rules.length > 0 && chunks.every((c) => !c.triggerRule)) {
     console.warn("[warn] No rules matched — the entire file became a single chunk")
   }
 
