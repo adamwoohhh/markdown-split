@@ -5,7 +5,9 @@
       "Bash(chmod +x /Users/adamwu/CodeForFun/markit/mardown_split/bin/mardown-split.js)",
       "Bash(rm -rf /tmp/out-blank2)",
       "Read(//tmp/**)",
-      "Bash(bun test:*)"
+      "Bash(bun test:*)",
+      "Bash(bun:*)",
+      "Bash(echo \"exit: $?\")"
     ]
   }
 }

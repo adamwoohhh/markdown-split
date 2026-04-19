@@ -137,4 +137,5 @@ export interface CliOptions {
   overwrite: boolean
   keepEmpty: boolean
   verbose: boolean
+  debug: boolean
 }

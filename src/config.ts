@@ -49,5 +49,6 @@ export function mergeConfig(
     overwrite: cliOptions.overwrite !== undefined ? cliOptions.overwrite : (cfgOutput.overwrite ?? false),
     keepEmpty: cliOptions.keepEmpty ?? false,
     verbose: cliOptions.verbose ?? false,
+    debug: cliOptions.debug ?? false,
   }
 }

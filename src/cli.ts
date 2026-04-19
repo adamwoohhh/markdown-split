@@ -22,6 +22,7 @@ Options:
       --overwrite           Allow overwriting existing output files
       --keep-empty          Keep zero-line chunks (filtered by default)
   -v, --verbose             Print per-chunk details
+      --debug               Print internal pipeline steps to stderr
   -h, --help                Show this help message
 
 ────────────────────────────────────────────────────────────────
@@ -124,6 +125,7 @@ export async function run(argv: string[]): Promise<void> {
   let overwrite: boolean | undefined
   let keepEmpty: boolean | undefined
   let verbose: boolean | undefined
+  let debug: boolean | undefined
   const inlineRules: AnyRule[] = []
 
   let i = 0
@@ -190,6 +192,9 @@ export async function run(argv: string[]): Promise<void> {
       case "--verbose":
         verbose = true
         break
+      case "--debug":
+        debug = true
+        break
       default:
         fatal(`Unknown argument: ${arg}`)
     }
@@ -226,7 +231,21 @@ export async function run(argv: string[]): Promise<void> {
     overwrite,
     keepEmpty,
     verbose,
+    debug,
   })
+
+  const dbg = options.debug ? (msg: string) => console.error(`[debug] ${msg}`) : () => {}
+
+  dbg(`input: ${resolve(options.input)}`)
+  dbg(`format: ${options.format}  outputDir: ${options.outputDir}  dryRun: ${options.dryRun}`)
+
+  dbg('─── config ───')
+  dbg(`config files: ${JSON.stringify(configFile)}`)
+  dbg(`config inline: ${JSON.stringify({ input, outputDir, format, prefix, indexPad, dryRun, overwrite, keepEmpty, verbose, debug })}`)
+  dbg(`config: ${JSON.stringify(options)}`)
+  dbg('');
+
+  dbg(`rules: ${options.rules.length} (${options.rules.map((r) => ("pattern" in r ? r.pattern : r.id ?? "fn")).join(", ") || "none"})`)
 
   if (options.rules.length === 0) {
     console.warn("[warn] No rules defined — the entire file will be a single chunk")
@@ -241,9 +260,15 @@ export async function run(argv: string[]): Promise<void> {
     fatal(`Cannot read input file: ${inputPath}`)
   }
 
+  const lineCount = content!.split("\n").length
+  dbg(`read ${lineCount} line(s) from ${inputPath}`)
+
   // ─── Parse ──────────────────────────────────────────────────────────────────
   const compiledRules = compileRules(options.rules)
+  dbg(`compiled ${compiledRules.length} rule(s)`)
+
   const chunks = parse(content!, compiledRules, { keepEmpty: options.keepEmpty })
+  dbg(`parsed → ${chunks.length} chunk(s)`)
 
   if (chunks.length === 0) {
     console.log("No chunks produced (empty input or all chunks were filtered)")
@@ -256,13 +281,20 @@ export async function run(argv: string[]): Promise<void> {
 
   // ─── Name chunks ────────────────────────────────────────────────────────────
   assignFilenames(chunks, options)
+  dbg(`named chunks: ${chunks.map((c) => c.filename).join(", ")}`)
 
   // ─── Create output dir ──────────────────────────────────────────────────────
   if (!options.dryRun) {
-    await ensureDir(options.outputDir)
+    try {
+      await ensureDir(options.outputDir)
+    } catch (e) {
+      fatal(`Cannot create output directory "${options.outputDir}": ${(e as Error).message}`)
+    }
+    dbg(`ensured output dir: ${options.outputDir}`)
   }
 
   // ─── Write ──────────────────────────────────────────────────────────────────
+  dbg(`writing ${chunks.length} chunk(s) as ${options.format}…`)
   try {
     await writeChunks(chunks, inputPath, options)
   } catch (e) {

@@ -63,6 +63,79 @@ Options:
 | `json-files` | 每个 chunk 输出一个 `.json` 文件：`{ index, filename, metadata, content }` |
 | `json-array` | 所有 chunk 合并为单个 `.json` 文件（以输入文件名命名） |
 
+### json-files 示例
+
+每个 chunk 单独输出为一个 JSON 文件，适合需要逐文件处理的场景：
+
+```bash
+markdown-split -i book.md -o out/ -f json-files \
+  -r '{"pattern":"^## ","splitBehavior":"before","filenameStrategy":"heading"}'
+```
+
+输出目录结构：
+
+```
+out/
+  chapter-one.json
+  chapter-two.json
+  ...
+```
+
+每个文件的内容结构：
+
+```json
+{
+  "index": 1,
+  "filename": "chapter-one",
+  "metadata": {},
+  "content": "## Chapter One\n\nChapter one content."
+}
+```
+
+如果使用了 `metadataExtract` 提取字段，`metadata` 会包含对应数据：
+
+```bash
+markdown-split -i book.md -o out/ -f json-files \
+  -r '{"pattern":"^## (?<title>.+)","splitBehavior":"before","filenameStrategy":"heading","metadataExtract":{"title":"title"}}'
+```
+
+```json
+{
+  "index": 1,
+  "filename": "chapter-one",
+  "metadata": { "title": "Chapter One" },
+  "content": "## Chapter One\n\nChapter one content."
+}
+```
+
+### json-array 示例
+
+所有 chunk 合并输出为单个 JSON 文件，适合批量导入或进一步程序化处理：
+
+```bash
+markdown-split -i book.md -o out/ -f json-array \
+  -r '{"pattern":"^## ","splitBehavior":"before","filenameStrategy":"heading"}'
+```
+
+输出为 `out/book.json`，内容为数组：
+
+```json
+[
+  {
+    "index": 1,
+    "filename": "chapter-one",
+    "metadata": {},
+    "content": "## Chapter One\n\nChapter one content."
+  },
+  {
+    "index": 2,
+    "filename": "chapter-two",
+    "metadata": {},
+    "content": "## Chapter Two\n\nChapter two content."
+  }
+]
+```
+
 ## 配置文件
 
 支持两种格式：
